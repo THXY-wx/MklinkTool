@@ -22,7 +22,7 @@ fun link(path: String, linkPath: String) {
         if (exitCode == 0)
             println("链接成功：$output")
         else
-            println("链接失败：退出码 ${exitCode}")
+            println("链接失败：退出码 $exitCode")
     } catch (e: Exception) {
         println("链接失败：${e.message}")
     }
