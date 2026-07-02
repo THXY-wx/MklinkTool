@@ -1,6 +1,12 @@
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
 
 fun main() {
+    if (!System.getProperty("os.name").startsWith("Windows")) {
+        println("此工具仅支持 Windows 系统（依赖 mklink 命令）")
+        return
+    }
     val (pathList, targetPath) = getPath()
     val isAllReplace = isAllReplace(true)
     for (path in pathList) {
@@ -22,7 +28,7 @@ fun link(path: String, linkPath: String) {
         if (exitCode == 0)
             println("链接成功：$output")
         else
-            println("链接失败：退出码 $exitCode")
+            println("链接失败：$output 退出码 $exitCode")
     } catch (e: Exception) {
         println("链接失败：${e.message}")
     }
@@ -33,12 +39,12 @@ fun checkLinkPath(linkPath: String, isAllReplace: Boolean): Boolean =
         println("发现${linkPath}已存在")
         if (isReplace(isAllReplace, true)) {
             try {
-                if (File(linkPath).deleteRecursively()) {
+                val pathObj = Paths.get(linkPath)
+                if (Files.deleteIfExists(pathObj)) {
                     println("已删除${linkPath}")
                     true
                 } else {
-                    println("删除失败")
-                    println("已取消替换")
+                    println("删除失败：文件不存在")
                     false
                 }
             } catch (e: Exception) {
@@ -146,7 +152,7 @@ fun expandPath(vararg paths: String): List<String> {
     for (path in paths) {
         val subPath1 = path.substringBefore('*')
         val subPath2 = path.substringAfter('*')
-        val isName = subPath2.length > 1 && subPath2[0] == '.'
+        val isName = subPath2.startsWith('.')
         val pathList =
             File(subPath1)
                 .listFiles()
