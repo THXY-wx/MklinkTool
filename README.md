@@ -9,7 +9,7 @@
 
 ## 运行方式
 
-1. 在 https://github.com/THXY-wx/releases 中下载最新版本的 `MklinkTool.jar` 文件。
+1. 在 https://github.com/THXY-wx/MklinkTool/releases 中下载最新版本的 `MklinkTool.jar` 文件。
 2. 在 jar 文件所在目录中以管理员身份打开命令行窗口。
 3. 执行以下命令：
 
