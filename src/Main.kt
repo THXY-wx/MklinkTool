@@ -7,8 +7,9 @@ fun main() {
         println("此工具仅支持 Windows 系统（依赖 mklink 命令）")
         return
     }
+    println("请输入原始文件路径（可输入多个且允许带双引号，*代表该路径下所有文件/文件名（如有后缀名），不输入代表结束）")
     val (pathList, targetPath) = getPath()
-    val isAllReplace = isAllReplace(true)
+    val isAllReplace = if (pathList.size > 1) mutableListOf() else mutableListOf<Boolean?>(null)
     for (path in pathList) {
         val linkPath = File(targetPath, File(path).name).path
         if (checkLinkPath(linkPath, isAllReplace))
@@ -18,15 +19,21 @@ fun main() {
 
 fun link(path: String, linkPath: String) {
     try {
-        val process = ProcessBuilder("cmd", "/c", "mklink", "/J", linkPath, path)
-            .redirectErrorStream(true)
-            .start()
+        val process = arrayOf("cmd", "/c", "mklink")
+            .let { if (File(path).isFile) it else it + "/J" }
+            .let { it + linkPath + path }
+            .let {
+                ProcessBuilder(*it)
+                    .redirectErrorStream(true)
+                    .start()
+            }
+
         val output = process.inputStream.bufferedReader().use { it.readText() }
 
         val exitCode = process.waitFor()
 
         if (exitCode == 0)
-            println("链接成功：$output")
+            println("链接成功：$linkPath <<===>> $path")
         else
             println("链接失败：$output 退出码 $exitCode")
     } catch (e: Exception) {
@@ -34,9 +41,10 @@ fun link(path: String, linkPath: String) {
     }
 }
 
-fun checkLinkPath(linkPath: String, isAllReplace: Boolean): Boolean =
+fun checkLinkPath(linkPath: String, isAllReplace: MutableList<Boolean?>): Boolean =
     if (File(linkPath).exists()) {
         println("发现${linkPath}已存在")
+        if (isAllReplace.isEmpty()) isAllReplace += isAllReplace(true)
         if (isReplace(isAllReplace, true)) {
             try {
                 val pathObj = Paths.get(linkPath)
@@ -62,9 +70,6 @@ fun checkLinkPath(linkPath: String, isAllReplace: Boolean): Boolean =
 
 fun getPath(): Pair<List<String>, String> {
     val pathList = mutableListOf<String>()
-
-    println("请输入原始文件路径（可输入多个且允许带双引号，*代表该路径下所有文件/文件名（如有后缀名），不输入代表结束）")
-
     while (true) {
         print("路径${pathList.size + 1}：")
         val path = readln().trim('"')
@@ -136,13 +141,13 @@ fun choosePath(path1: String, path2: String, isFirst: Boolean): String {
     if (isFirst)
         print("请选择要保留的路径：")
     print("\n1. $path1\n2. $path2\n3. 都不保留\n请输入序号：")
-    when (readln().toIntOrNull()) {
-        1 -> return path1
-        2 -> return path2
-        3 -> return ""
+    return when (readln().toIntOrNull()) {
+        1 -> path1
+        2 -> path2
+        3 -> ""
         else -> {
             print("输入错误，请重新输入：")
-            return choosePath(path1, path2, false)
+            choosePath(path1, path2, false)
         }
     }
 }
@@ -170,24 +175,30 @@ fun expandPath(vararg paths: String): List<String> {
     return result
 }
 
-fun isReplace(isAllReplace: Boolean, isFirst: Boolean): Boolean {
-    if (isAllReplace) return true
-    if (isFirst) print("是否替换已存在的文件？(y/n)：")
-    return when (readln().lowercase()) {
-        "y" -> true
-        "n" -> false
-        else -> {
-            print("输入错误，请重新输入：")
-            isReplace(isAllReplace = false, isFirst = false)
+fun isReplace(isAllReplace: MutableList<Boolean?>, isFirst: Boolean): Boolean =
+    when (isAllReplace[0]) {
+        true -> true
+        false -> false
+        null -> {
+            if (isFirst) print("是否替换已存在的文件？（1：是 默认：否）：")
+            when (readln().lowercase()) {
+                "1" -> true
+                "" -> false
+                else -> {
+                    print("输入错误，请重新输入：")
+                    isReplace(isAllReplace, false)
+                }
+            }
         }
     }
-}
 
-fun isAllReplace(isFirst: Boolean): Boolean {
-    if (isFirst) print("是否全部替换已存在的文件？(y/n)：")
+
+fun isAllReplace(isFirst: Boolean): Boolean? {
+    if (isFirst) print("是否全部替换已存在的文件？（1：全部 2：全不 默认：逐个选择）：")
     return when (readln().lowercase()) {
-        "y" -> true
-        "n" -> false
+        "1" -> true
+        "2" -> false
+        "" -> null
         else -> {
             print("输入错误，请重新输入：")
             isAllReplace(false)
